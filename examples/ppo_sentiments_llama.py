@@ -28,6 +28,9 @@ def get_positive_score(scores):
 
 
 def llama_config(args):
+
+    tokenizer_path_maybe = os.path.join(args.model_path, "tokenizer.model")
+    tokenizer_path = tokenizer_path_maybe if os.path.exists(tokenizer_path_maybe) else args.model_path
     return TRLConfig(
         train=TrainConfig(
             seq_length=1024,
@@ -41,7 +44,7 @@ def llama_config(args):
             save_best=False,
         ),
         model=ModelConfig(model_path=args.model_path, num_layers_unfrozen=2),
-        tokenizer=TokenizerConfig(tokenizer_path=os.path.join(args.model_path, "tokenizer.model"), truncation_side="right", padding_side="left"),
+        tokenizer=TokenizerConfig(tokenizer_path=tokenizer_path, truncation_side="right", padding_side="left"),
         optimizer=OptimizerConfig(
             name="adamw", kwargs=dict(lr=1.0e-5, betas=(0.9, 0.95), eps=1.0e-8, weight_decay=1.0e-6)
         ),
