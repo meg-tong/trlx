@@ -1,15 +1,14 @@
 # Generates positive movie reviews by tuning a pretrained model on IMDB dataset
 # with a sentiment reward function
-import json
 import os
-import sys
 from typing import List
+import argparse
 
 import torch
 from datasets import load_dataset
 from transformers import pipeline
 
-import trlx
+from trlx import trlx
 from trlx.data.default_configs import (
     ModelConfig,
     OptimizerConfig,
@@ -20,13 +19,18 @@ from trlx.data.default_configs import (
     TRLConfig,
 )
 
+from src.common import attach_debugger
+
 
 def get_positive_score(scores):
     "Extract value associated with a positive sentiment from pipeline's output"
     return dict(map(lambda x: tuple(x.values()), scores))["POSITIVE"]
 
 
-def llama_config():
+def llama_config(args):
+
+    tokenizer_path_maybe = os.path.join(args.model_path, "tokenizer.model")
+    tokenizer_path = tokenizer_path_maybe if os.path.exists(tokenizer_path_maybe) else args.model_path
     return TRLConfig(
         train=TrainConfig(
             seq_length=1024,
@@ -39,8 +43,8 @@ def llama_config():
             trainer="AcceleratePPOTrainer",
             save_best=False,
         ),
-        model=ModelConfig(model_path="/data/public_models/llama/llama_hf_weights/llama-7b", num_layers_unfrozen=2),
-        tokenizer=TokenizerConfig(tokenizer_path="/data/public_models/llama/llama_hf_weights/llama-7b/tokenizer.model", truncation_side="right", padding_side="left"),
+        model=ModelConfig(model_path=args.model_path, num_layers_unfrozen=2),
+        tokenizer=TokenizerConfig(tokenizer_path=tokenizer_path, truncation_side="right", padding_side="left"),
         optimizer=OptimizerConfig(
             name="adamw", kwargs=dict(lr=1.0e-5, betas=(0.9, 0.95), eps=1.0e-8, weight_decay=1.0e-6)
         ),
@@ -72,9 +76,9 @@ def llama_config():
     )
 
 
-def main(hparams={}):
+def main(args):
     # Merge sweep config with default config if given
-    config = TRLConfig.update(llama_config().to_dict(), hparams)
+    config = TRLConfig.from_dict(llama_config(args).to_dict())
 
     if torch.cuda.is_available():
         device = int(os.environ.get("LOCAL_RANK", 0))
@@ -107,5 +111,12 @@ def main(hparams={}):
 
 
 if __name__ == "__main__":
-    hparams = {} if len(sys.argv) == 1 else json.loads(sys.argv[1])
-    main(hparams)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_path", type=str, default="/data/public_models/llama/llama_hf_weights/llama-7b")
+    parser.add_argument("--debug", action="store_true")
+    args = parser.parse_args()
+
+    if args.debug:
+        attach_debugger()
+
+    main(args)
