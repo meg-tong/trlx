@@ -19,7 +19,7 @@ from trlx.data.default_configs import (
     TRLConfig,
 )
 
-from src.common import attach_debugger
+from src.common import attach_debugger, is_main_process
 
 
 def get_positive_score(scores):
@@ -29,48 +29,49 @@ def get_positive_score(scores):
 
 def llama_config(args):
 
-    tokenizer_path_maybe = os.path.join(args.model_path, "tokenizer.model")
-    tokenizer_path = tokenizer_path_maybe if os.path.exists(tokenizer_path_maybe) else args.model_path
+    tokenizer_path_maybe = os.path.join(args.model, "tokenizer.model")
+    tokenizer_path = tokenizer_path_maybe if os.path.exists(tokenizer_path_maybe) else args.model
     return TRLConfig(
         train=TrainConfig(
-            seq_length=1024,
-            epochs=100,
-            total_steps=10000,
-            batch_size=32,
-            checkpoint_interval=10000,
-            eval_interval=100,
-            pipeline="PromptPipeline",
-            trainer="AcceleratePPOTrainer",
-            save_best=False,
+            seq_length=args.seq_length,
+            epochs=args.epochs,
+            total_steps=args.total_steps,
+            batch_size=args.batch_size,
+            checkpoint_interval=args.checkpoint_interval,
+            eval_interval=args.eval_interval,
+            pipeline=args.pipeline,
+            trainer=args.trainer,
+            save_best=args.save_best,
+            seed=args.seed,
         ),
-        model=ModelConfig(model_path=args.model_path, num_layers_unfrozen=2),
+        model=ModelConfig(model_path=args.model, num_layers_unfrozen=args.num_layers_unfrozen),
         tokenizer=TokenizerConfig(tokenizer_path=tokenizer_path, truncation_side="right", padding_side="left"),
         optimizer=OptimizerConfig(
-            name="adamw", kwargs=dict(lr=1.0e-5, betas=(0.9, 0.95), eps=1.0e-8, weight_decay=1.0e-6)
+            name="adamw", kwargs=dict(lr=args.lr, betas=args.betas, eps=args.eps, weight_decay=args.weight_decay)
         ),
-        scheduler=SchedulerConfig(name="cosine_annealing", kwargs=dict(T_max=10000, eta_min=1.0e-5)),
+        scheduler=SchedulerConfig(name="cosine_annealing", kwargs=dict(T_max=args.T_max, eta_min=args.eta_min)),
         method=PPOConfig(
             name="PPOConfig",
-            num_rollouts=128,
-            chunk_size=128,
-            ppo_epochs=4,
-            init_kl_coef=0.05,
-            target=6,
-            horizon=10000,
-            gamma=1,
-            lam=0.95,
-            cliprange=0.2,
-            cliprange_value=0.2,
-            vf_coef=1,
-            scale_reward="ignored",
-            ref_mean=None,
-            ref_std=None,
-            cliprange_reward=10,
+            num_rollouts=args.num_rollouts,
+            chunk_size=args.chunk_size,
+            ppo_epochs=args.ppo_epochs,
+            init_kl_coef=args.init_kl_coef,
+            target=args.target,
+            horizon=args.horizon,
+            gamma=args.gamma,
+            lam=args.lam,
+            cliprange=args.cliprange,
+            cliprange_value=args.cliprange_value,
+            vf_coef=args.vf_coef,
+            scale_reward=args.scale_reward,
+            ref_mean=args.ref_mean,
+            ref_std=args.ref_std,
+            cliprange_reward=args.cliprange_reward,
             gen_kwargs=dict(
-                max_new_tokens=40,
-                top_k=0,
-                top_p=1.0,
-                do_sample=True,
+                max_new_tokens=args.max_new_tokens,
+                top_k=args.top_k,
+                top_p=args.top_p,
+                do_sample=args.do_sample,
             ),
         ),
     )
@@ -112,11 +113,63 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_path", type=str, default="/data/public_models/llama/llama_hf_weights/llama-7b")
+    parser.add_argument("--model", type=str, default="/data/public_models/llama/llama_hf_weights/llama-7b")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--debug_port", type=int, default=5678)
+    parser.add_argument("--seed", type=int, default=42)
+
+    # train config
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--total_steps", type=int, default=300)
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument("--checkpoint_interval", type=int, default=10000)
+    parser.add_argument("--eval_interval", type=int, default=100)
+    parser.add_argument("--pipeline", type=str, default="PromptPipeline")
+    parser.add_argument("--trainer", type=str, default="AcceleratePPOTrainer")
+    parser.add_argument("--num_layers_unfrozen", type=int, default=2)
+    parser.add_argument("--save_best", action="store_true")
+    parser.add_argument("--seq_length", type=int, default=1024)
+
+    # optimizer config
+    parser.add_argument("--lr", type=float, default=1.0e-5)
+    parser.add_argument("--betas", type=float, nargs=2, default=[0.9, 0.95])
+    parser.add_argument("--eps", type=float, default=1.0e-8)
+    parser.add_argument("--weight_decay", type=float, default=1.0e-6)
+    parser.add_argument("--T_max", type=int, default=10000)
+    parser.add_argument("--eta_min", type=float, default=1.0e-5)
+
+    # PPO config
+    parser.add_argument("--num_rollouts", type=int, default=128)
+    parser.add_argument("--chunk_size", type=int, default=128)
+    parser.add_argument("--ppo_epochs", type=int, default=4)
+    parser.add_argument("--init_kl_coef", type=float, default=0.05)
+    parser.add_argument("--target", type=int, default=6)
+    parser.add_argument("--horizon", type=int, default=10000)
+    parser.add_argument("--gamma", type=float, default=1)
+    parser.add_argument("--lam", type=float, default=0.95)
+    parser.add_argument("--cliprange", type=float, default=0.2)
+    parser.add_argument("--cliprange_value", type=float, default=0.2)
+    parser.add_argument("--vf_coef", type=float, default=1)
+    parser.add_argument("--scale_reward", type=str, default="ignored")
+    parser.add_argument("--ref_mean", type=float, default=None)
+    parser.add_argument("--ref_std", type=float, default=None)
+    parser.add_argument("--cliprange_reward", type=float, default=10)
+
+    # gen kwargs
+    parser.add_argument("--max_new_tokens", type=int, default=40)
+    parser.add_argument("--top_k", type=int, default=0)
+    parser.add_argument("--top_p", type=float, default=1.0)
+    parser.add_argument("--do_sample", action=argparse.BooleanOptionalAction, default=True)
+
     args = parser.parse_args()
 
-    if args.debug:
-        attach_debugger()
+    slurm_job_id = int(os.getenv("SLURM_ARRAY_JOB_ID", 0))
+    slurm_array_task_id = int(os.getenv("SLURM_ARRAY_TASK_ID", 0))
+    wandb_group = f"{args.model}_job_{slurm_job_id}"
+    os.environ["WANDB_RUN_GROUP"] = wandb_group
+
+    if args.debug and is_main_process():
+        print(f"Attaching debugger to main process with PID {os.getpid()}: {args.debug_port}")
+        attach_debugger(args.debug_port)
 
     main(args)
