@@ -165,8 +165,9 @@ if __name__ == "__main__":
 
     slurm_job_id = int(os.getenv("SLURM_ARRAY_JOB_ID", 0))
     slurm_array_task_id = int(os.getenv("SLURM_ARRAY_TASK_ID", 0))
-    wandb_group = f"{args.model}_job_{slurm_job_id}"
-    os.environ["WANDB_RUN_GROUP"] = wandb_group
+    if not "WANDB_RUN_ID" in os.environ:
+        wandb_group = f"{args.model}_job_{slurm_job_id}"
+        os.environ["WANDB_RUN_GROUP"] = wandb_group
 
     if args.debug and is_main_process():
         print(f"Attaching debugger to main process with PID {os.getpid()}: {args.debug_port}")

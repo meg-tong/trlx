@@ -1,3 +1,5 @@
+"""This file is to be run by the SLURM job array (defined in `train.py`)."""
+
 import os
 import subprocess
 import argparse
@@ -23,12 +25,16 @@ if __name__ == "__main__":
 
     command = [
         "accelerate", "launch",
+
+        # arguments to accelerate.launch
         "--num_processes", str(args.num_processes),
         "--main_process_port", str((DEFAULT_MASTER_PORT + slurm_job_id + slurm_array_task_id) % 65000),
         "--gradient_accumulation_steps", str(args.gradient_accumulation_steps), 
         "--config_file", args.config_file,
         "--mixed_precision", args.mixed_precision,
-        args.experiment_file,
+
+        # this is an executable, next lines are arguments to it
+        args.experiment_file, 
         "--seed", seed,
         *extra,
     ]
