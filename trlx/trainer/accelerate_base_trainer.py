@@ -48,14 +48,15 @@ class AccelerateRLTrainer(BaseRLTrainer):
     def __init__(self, config, **kwargs):  # noqa: C901
         super().__init__(config, **kwargs)
         self.max_length = config.train.seq_length
-        if config.train.minibatch_size:
-            assert config.train.batch_size % config.train.minibatch_size == 0, "Minibatch size must divide batch size"
-            self.mb_size = config.train.minibatch_size
+        self.accelerator = Accelerator(log_with=config.train.tracker, logging_dir=config.train.logging_dir)
+        if not config.train.minibatch_size:
+            config.train.minibatch_size = config.train.batch_size // self.accelerator.gradient_accumulation_steps  # grad accum steps is already set by now, it comes from an env variable, that is set somehow before this (by accelerate?) based on the accelerate/deepspeed config
         else:
-            self.mb_size = config.train.batch_size
+            assert config.train.batch_size % config.train.minibatch_size == 0, "Minibatch size must divide batch size"
+            assert self.accelerator.gradient_accumulation_steps == 1, "Custom minibatch size is not compatible with grad accumulation"
+        self.mb_size = config.train.minibatch_size
         self.num_mb = config.train.batch_size // self.mb_size
         self.mb_count = 0
-        self.accelerator = Accelerator(log_with=config.train.tracker, logging_dir=config.train.logging_dir)
 
         if self.accelerator.state.deepspeed_plugin is not None:
             # by accelerate's default, arguments in `model.forward` would be casted to half
