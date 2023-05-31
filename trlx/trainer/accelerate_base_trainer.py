@@ -50,7 +50,7 @@ class AccelerateRLTrainer(BaseRLTrainer):
         self.max_length = config.train.seq_length
         self.accelerator = Accelerator(log_with=config.train.tracker, logging_dir=config.train.logging_dir)
         if not config.train.minibatch_size:
-            config.train.minibatch_size = config.train.batch_size // self.accelerator.gradient_accumulation_steps  # grad accum steps is already set by now, it comes from an env variable, that is set somehow before this (by accelerate?) based on the accelerate/deepspeed config
+            config.train.minibatch_size = config.train.batch_size // self.accelerator.gradient_accumulation_steps
         else:
             assert config.train.batch_size % config.train.minibatch_size == 0, "Minibatch size must divide batch size"
             assert self.accelerator.gradient_accumulation_steps == 1, "Custom minibatch size is not compatible with grad accumulation"
