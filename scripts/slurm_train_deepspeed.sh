@@ -3,7 +3,6 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-gpu=10
 #SBATCH --ntasks-per-node=1
-#SBATCH --partition=compute
 #SBATCH --mem=800G
 #SBATCH --output=logs/%x_%j.out
 
