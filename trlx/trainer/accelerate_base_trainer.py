@@ -52,8 +52,7 @@ class AccelerateRLTrainer(BaseRLTrainer):
         if not config.train.minibatch_size:
             config.train.minibatch_size = config.train.batch_size // self.accelerator.gradient_accumulation_steps
         else:
-            assert config.train.batch_size % config.train.minibatch_size == 0, "Minibatch size must divide batch size"
-            assert self.accelerator.gradient_accumulation_steps == 1, "Custom minibatch size is not compatible with grad accumulation"
+            assert config.train.batch_size == config.train.minibatch_size * self.accelerator.gradient_accumulation_steps, "Batch size must be equal to grad accumulation steps times minibatch size"
         self.mb_size = config.train.minibatch_size
         self.num_mb = config.train.batch_size // self.mb_size
         self.mb_count = 0
