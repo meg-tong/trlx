@@ -146,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument("--chunk_size", type=int, default=128)
     parser.add_argument("--ppo_epochs", type=int, default=4)
     parser.add_argument("--init_kl_coef", type=float, default=0.05)
-    parser.add_argument("--target", type=int, default=6)
+    parser.add_argument("--target", type=float, default=6)
     parser.add_argument("--horizon", type=int, default=10000)
     parser.add_argument("--gamma", type=float, default=1)
     parser.add_argument("--lam", type=float, default=0.95)
