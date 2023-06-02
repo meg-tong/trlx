@@ -119,7 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=42)
 
     # train config
-    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument("--epochs", type=int, default=100_000) # `total_steps` will cap it
     parser.add_argument("--total_steps", type=int, default=300)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--checkpoint_interval", type=int, default=10000)
