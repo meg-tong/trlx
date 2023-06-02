@@ -33,6 +33,7 @@ def llama_config(args):
     tokenizer_path = tokenizer_path_maybe if os.path.exists(tokenizer_path_maybe) else args.model
     return TRLConfig(
         train=TrainConfig(
+            project_name=args.project_name,
             seq_length=args.seq_length,
             epochs=args.epochs,
             total_steps=args.total_steps,
@@ -118,6 +119,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--debug_port", type=int, default=5678)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--project_name", type=str, default="trlx")
 
     # train config
     parser.add_argument("--epochs", type=int, default=100_000) # `total_steps` will cap it
