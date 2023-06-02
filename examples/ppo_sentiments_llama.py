@@ -103,13 +103,16 @@ def main(args):
 
     # Take few words off of movies reviews as prompts
     imdb = load_dataset("imdb", split="train+test")
-    prompts = [" ".join(review.split()[:4]) for review in imdb["text"]]
-
+    train_prompts = [" ".join(review.split()[:4]) for review in imdb["text"]]
+    eval_prompts = ["I don't know much about Hungarian underground"] * args.num_eval_prompts
+    stop_sequences = []
+    
     trlx.train(
         reward_fn=reward_fn,
-        prompts=prompts,
-        eval_prompts=["I don't know much about Hungarian underground"] * 64,
+        prompts=train_prompts,
+        eval_prompts=eval_prompts,
         config=config,
+        stop_sequences=stop_sequences,
     )
 
 
@@ -132,6 +135,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers_unfrozen", type=int, default=2)
     parser.add_argument("--save_best", action="store_true")
     parser.add_argument("--seq_length", type=int, default=1024)
+    parser.add_argument("--num_eval_prompts", type=int, default=64)
 
     # optimizer config
     parser.add_argument("--lr", type=float, default=1.0e-5)
