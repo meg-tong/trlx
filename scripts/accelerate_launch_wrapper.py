@@ -4,8 +4,11 @@ import os
 import subprocess
 import argparse
 from pathlib import Path
+import random
 
 DEFAULT_MASTER_PORT = 29500
+MIN_PORT = 2000
+MAX_PORT = 65000
 
 path_to_trlx = Path(__file__).parent.parent
 
@@ -19,23 +22,23 @@ if __name__ == "__main__":
 
     args, extra = parser.parse_known_args()
 
-    slurm_job_id = int(os.getenv("SLURM_ARRAY_JOB_ID", 0))
-    slurm_array_task_id = int(os.getenv("SLURM_ARRAY_TASK_ID", 0))
-    seed = str(slurm_job_id + slurm_array_task_id)
+    slurm_job_id = int(os.getenv("SLURM_JOB_ID", random.randint(0, 100_000)))
+    seed = slurm_job_id
+    main_process_port = MIN_PORT + (DEFAULT_MASTER_PORT + slurm_job_id) % (MAX_PORT - MIN_PORT)
 
     command = [
         "accelerate", "launch",
 
         # arguments to accelerate.launch
         "--num_processes", str(args.num_processes),
-        "--main_process_port", str((DEFAULT_MASTER_PORT + slurm_job_id + slurm_array_task_id) % 65000),
+        "--main_process_port", str(main_process_port),
         "--gradient_accumulation_steps", str(args.gradient_accumulation_steps), 
         "--config_file", args.config_file,
         "--mixed_precision", args.mixed_precision,
 
         # this is an executable, next lines are arguments to it
         args.experiment_file, 
-        "--seed", seed,
+        "--seed", str(seed),
         *extra,
     ]
 
