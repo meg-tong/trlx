@@ -33,6 +33,7 @@ def llama_config(args):
     tokenizer_path = tokenizer_path_maybe if os.path.exists(tokenizer_path_maybe) else args.model
     return TRLConfig(
         train=TrainConfig(
+            project_name=args.project_name,
             seq_length=args.seq_length,
             epochs=args.epochs,
             total_steps=args.total_steps,
@@ -68,6 +69,7 @@ def llama_config(args):
             ref_std=args.ref_std,
             cliprange_reward=args.cliprange_reward,
             gen_kwargs=dict(
+                temperature=args.temperature,
                 max_new_tokens=args.max_new_tokens,
                 top_k=args.top_k,
                 top_p=args.top_p,
@@ -101,13 +103,16 @@ def main(args):
 
     # Take few words off of movies reviews as prompts
     imdb = load_dataset("imdb", split="train+test")
-    prompts = [" ".join(review.split()[:4]) for review in imdb["text"]]
-
+    train_prompts = [" ".join(review.split()[:4]) for review in imdb["text"]]
+    eval_prompts = ["I don't know much about Hungarian underground"] * args.num_eval_prompts
+    stop_sequences = []
+    
     trlx.train(
         reward_fn=reward_fn,
-        prompts=prompts,
-        eval_prompts=["I don't know much about Hungarian underground"] * 64,
+        prompts=train_prompts,
+        eval_prompts=eval_prompts,
         config=config,
+        stop_sequences=stop_sequences,
     )
 
 
@@ -117,6 +122,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--debug_port", type=int, default=5678)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--project_name", type=str, default="trlx")
 
     # train config
     parser.add_argument("--epochs", type=int, default=100_000) # `total_steps` will cap it
@@ -129,6 +135,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_layers_unfrozen", type=int, default=2)
     parser.add_argument("--save_best", action="store_true")
     parser.add_argument("--seq_length", type=int, default=1024)
+    parser.add_argument("--num_eval_prompts", type=int, default=64)
 
     # optimizer config
     parser.add_argument("--lr", type=float, default=1.0e-5)
@@ -143,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument("--chunk_size", type=int, default=128)
     parser.add_argument("--ppo_epochs", type=int, default=4)
     parser.add_argument("--init_kl_coef", type=float, default=0.05)
-    parser.add_argument("--target", type=int, default=6)
+    parser.add_argument("--target", type=float, default=6)
     parser.add_argument("--horizon", type=int, default=10000)
     parser.add_argument("--gamma", type=float, default=1)
     parser.add_argument("--lam", type=float, default=0.95)
@@ -156,6 +163,7 @@ if __name__ == "__main__":
     parser.add_argument("--cliprange_reward", type=float, default=10)
 
     # gen kwargs
+    parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max_new_tokens", type=int, default=40)
     parser.add_argument("--top_k", type=int, default=0)
     parser.add_argument("--top_p", type=float, default=1.0)
