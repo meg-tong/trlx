@@ -68,6 +68,7 @@ def llama_config(args):
             ref_std=args.ref_std,
             cliprange_reward=args.cliprange_reward,
             gen_kwargs=dict(
+                temperature=args.temperature,
                 max_new_tokens=args.max_new_tokens,
                 top_k=args.top_k,
                 top_p=args.top_p,
@@ -156,6 +157,7 @@ if __name__ == "__main__":
     parser.add_argument("--cliprange_reward", type=float, default=10)
 
     # gen kwargs
+    parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--max_new_tokens", type=int, default=40)
     parser.add_argument("--top_k", type=int, default=0)
     parser.add_argument("--top_p", type=float, default=1.0)
